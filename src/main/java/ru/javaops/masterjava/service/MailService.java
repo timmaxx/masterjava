@@ -6,6 +6,8 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class MailService {
     private static final String OK = "OK";
@@ -17,10 +19,10 @@ public class MailService {
     private final ExecutorService mailExecutor = Executors.newFixedThreadPool(8);
 
     public GroupResult sendToList(final String template, final Set<String> emails) throws Exception {
-        // 1.2.
-        for (String email: emails) {
-            mailExecutor.submit(() -> sendToUser(template, email));
-        }
+        // 1.3.
+        List<Future<MailResult>> futures = emails.stream()
+                .map(email -> mailExecutor.submit(() -> sendToUser(template, email)))
+                .collect(Collectors.toList());
         // Вроде после submit() нужно было ещё вызывать shutdown()?! Вот здесь.
         return new GroupResult(0, Collections.emptyList(), null);
     }
