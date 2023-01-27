@@ -1,12 +1,10 @@
 package ru.javaops.masterjava.service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class MailService {
@@ -24,7 +22,49 @@ public class MailService {
                 .map(email -> mailExecutor.submit(() -> sendToUser(template, email)))
                 .collect(Collectors.toList());
         // Вроде после submit() нужно было ещё вызывать shutdown()?! Вот здесь.
-        return new GroupResult(0, Collections.emptyList(), null);
+
+        // 2.2.
+        return new Callable<GroupResult>() {
+            private int success = 0;
+            private List<MailResult> failed = new ArrayList<>();
+            @Override
+            public GroupResult call() {
+                for (Future<MailResult> future : futures) {
+                    MailResult mailResult;
+                    try {
+                        // Минус такого решения:
+                        // get будет ждать закрытия потоков последовательно, но возможно у какого-то потока,
+                        // который запустился позже уже есть ответ.
+                        // Решением могло-бы быть проверка future на isDone, но тогда в цикле тратится ресурс процессора.
+                        mailResult = future.get(10, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        return cancelWithFail(INTERRUPTED_EXCEPTION);
+                    } catch (ExecutionException e) {
+                        // При отправке e-mail случилось исключение (внутри очереди).
+                        return cancelWithFail(e.getCause().toString());
+                    } catch (TimeoutException e) {
+                        return cancelWithFail(INTERRUPTED_BY_TIMEOUT);
+                    }
+                    // Если какое-то простое исключение случилось, то будем смотреть mailResult.
+                    if (mailResult.isOk()) {
+                        success++;
+                    } else {
+                        failed.add(mailResult);
+                        if (failed.size() >= 5) {
+                            // Прервём отправку писем, если 6 и более не отправились.
+                            return cancelWithFail(INTERRUPTED_BY_FAULTS_NUMBER);
+                        }
+                    }
+                }
+                return new GroupResult(success, failed, null);
+            }
+
+            private GroupResult cancelWithFail(String cause) {
+                // Делаем отмену каждой future
+                futures.forEach(f -> f.cancel(true));
+                return new GroupResult(success, failed, cause);
+            }
+        }.call();
     }
 
     // dummy realization
