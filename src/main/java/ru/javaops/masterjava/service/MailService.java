@@ -3,6 +3,9 @@ package ru.javaops.masterjava.service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MailService {
     private static final String OK = "OK";
@@ -11,10 +14,21 @@ public class MailService {
     private static final String INTERRUPTED_BY_TIMEOUT = "+++ Interrupted by timeout";
     private static final String INTERRUPTED_EXCEPTION = "+++ InterruptedException";
 
+    private final ExecutorService mailExecutor = Executors.newFixedThreadPool(8);
+
     public GroupResult sendToList(final String template, final Set<String> emails) throws Exception {
+        // 1.1.
+        for (String email: emails) {
+            mailExecutor.submit(new Callable<MailResult>() {
+                @Override
+                public MailResult call() throws Exception {
+                    return sendToUser(template, email);
+                }
+            });
+        }
+        // Вроде после submit() нужно было ещё вызывать shutdown()?! Вот здесь.
         return new GroupResult(0, Collections.emptyList(), null);
     }
-
 
     // dummy realization
     public MailResult sendToUser(String template, String email) throws Exception {
