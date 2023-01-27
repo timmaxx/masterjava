@@ -1,7 +1,6 @@
 package ru.javaops.masterjava.service;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -17,44 +16,51 @@ public class MailService {
     private final ExecutorService mailExecutor = Executors.newFixedThreadPool(8);
 
     public GroupResult sendToList(final String template, final Set<String> emails) throws Exception {
+        // 3.3. (для 2.3)
+        // CompletionService - скрестили executor и blockingView.
+        // Это какой-то CompletionService, который исполняется внутри mailExecutor.
+        final CompletionService<MailResult> completionService = new ExecutorCompletionService<>(mailExecutor);
+
         // 1.3.
         List<Future<MailResult>> futures = emails.stream()
                 .map(email -> mailExecutor.submit(() -> sendToUser(template, email)))
                 .collect(Collectors.toList());
         // Вроде после submit() нужно было ещё вызывать shutdown()?! Вот здесь.
 
-        // 2.2.
+        // 2.3.
         return new Callable<GroupResult>() {
             private int success = 0;
             private List<MailResult> failed = new ArrayList<>();
             @Override
             public GroupResult call() {
-                for (Future<MailResult> future : futures) {
-                    MailResult mailResult;
+                while (!futures.isEmpty()) {
                     try {
-                        // Минус такого решения:
-                        // get будет ждать закрытия потоков последовательно, но возможно у какого-то потока,
-                        // который запустился позже уже есть ответ.
-                        // Решением могло-бы быть проверка future на isDone, но тогда в цикле тратится ресурс процессора.
-                        mailResult = future.get(10, TimeUnit.SECONDS);
-                    } catch (InterruptedException e) {
-                        return cancelWithFail(INTERRUPTED_EXCEPTION);
+                        // Ждёт любую следующую таску (а не первую, как в предыдущем варианте),
+                        // которая будет уже исполнена или null (если таймаут истечет).
+                        Future<MailResult> future = completionService.poll(10, TimeUnit.SECONDS);
+                        if (future == null) {
+                            return cancelWithFail(INTERRUPTED_BY_TIMEOUT);
+                        }
+                        futures.remove(future);
+                        // А раз она будет уже исполнена, то get() не будет ждать.
+                        MailResult mailResult = future.get();
+                        // Если какое-то простое исключение случилось, то будем смотреть mailResult.
+                        if (mailResult.isOk()) {
+                            success++;
+                        } else {
+                            failed.add(mailResult);
+                            if (failed.size() >= 5) {
+                                // Прервём отправку писем, если 6 и более не отправились.
+                                return cancelWithFail(INTERRUPTED_BY_FAULTS_NUMBER);
+                            }
+                        }
                     } catch (ExecutionException e) {
                         // При отправке e-mail случилось исключение (внутри очереди).
                         return cancelWithFail(e.getCause().toString());
-                    } catch (TimeoutException e) {
-                        return cancelWithFail(INTERRUPTED_BY_TIMEOUT);
+                    } catch (InterruptedException e) {
+                        return cancelWithFail(INTERRUPTED_EXCEPTION);
                     }
-                    // Если какое-то простое исключение случилось, то будем смотреть mailResult.
-                    if (mailResult.isOk()) {
-                        success++;
-                    } else {
-                        failed.add(mailResult);
-                        if (failed.size() >= 5) {
-                            // Прервём отправку писем, если 6 и более не отправились.
-                            return cancelWithFail(INTERRUPTED_BY_FAULTS_NUMBER);
-                        }
-                    }
+
                 }
                 return new GroupResult(success, failed, null);
             }
