@@ -17,14 +17,9 @@ public class MailService {
     private final ExecutorService mailExecutor = Executors.newFixedThreadPool(8);
 
     public GroupResult sendToList(final String template, final Set<String> emails) throws Exception {
-        // 1.1.
+        // 1.2.
         for (String email: emails) {
-            mailExecutor.submit(new Callable<MailResult>() {
-                @Override
-                public MailResult call() throws Exception {
-                    return sendToUser(template, email);
-                }
-            });
+            mailExecutor.submit(() -> sendToUser(template, email));
         }
         // Вроде после submit() нужно было ещё вызывать shutdown()?! Вот здесь.
         return new GroupResult(0, Collections.emptyList(), null);
