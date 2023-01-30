@@ -23,7 +23,12 @@ public class MatrixUtil {
             futures.add( completionService.submit(
                     () -> new MatrixColumn(singleThreadMultiplyMatrixOnColumn(matrixA, matrixBT[finalI]), finalI)));
         }
-
+/*
+        // Мог-бы быть вариант альтернативный, но не понял, как вытащить номер строки двумерной матрицы при создании из неё потока.
+        List<Future<MatrixColumn>> futures = Arrays.stream(matrixBT)
+                .map(matrixBTrow -> new MatrixColumn(singleThreadMultiplyMatrixOnColumn(matrixA, matrixBTrow), finalI))
+                .collect(Collectors.toList());
+*/
         try {
             final int[][] matrixCT = new int[matrixSize][matrixSize];
             while (!futures.isEmpty()) {
