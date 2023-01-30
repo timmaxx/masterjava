@@ -1,41 +1,76 @@
 package ru.javaops.masterjava.matrix;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.*;
 
-/**
- * gkislin
- * 03.07.2016
- */
 public class MatrixUtil {
 
     // TODO implement parallel multiplication matrixA*matrixB
-    public static int[][] concurrentMultiply(int[][] matrixA, int[][] matrixB, ExecutorService executor) throws InterruptedException, ExecutionException {
-        final int matrixSize = matrixA.length;
-        final int[][] matrixC = new int[matrixSize][matrixSize];
+    public static int[][] concurrentMultiply(
+            int[][] matrixA,
+            int[][] matrixB,
+            ExecutorService executor) {
+        final CompletionService<MatrixColumn> completionService = new ExecutorCompletionService<>(executor);
 
-        return matrixC;
+        final int matrixSize = matrixA.length;
+        final int[][] matrixBT = transparent(matrixB);
+
+        List<Future<MatrixColumn>> futures = new ArrayList<>();
+        for (int i = 0; i < matrixSize; i++) {
+            int finalI = i;
+            futures.add( completionService.submit(
+                    () -> new MatrixColumn(singleThreadMultiplyMatrixOnColumn(matrixA, matrixBT[finalI]), finalI)));
+        }
+
+        try {
+            final int[][] matrixCT = new int[matrixSize][matrixSize];
+            while (!futures.isEmpty()) {
+                Future<MatrixColumn> future;
+                do {
+                    future = completionService.poll(1, TimeUnit.SECONDS);
+                } while (future == null);
+                futures.remove(future);
+                MatrixColumn matrixSlice = future.get();
+                matrixCT[matrixSlice.getColumnN()] = matrixSlice.getMatrixCN1();
+            }
+            return transparent(matrixCT);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    // Реализован шаг 0 из статьи.
-    // Предположение о деоптимизации в случае, когда отказываемся от границ матриц final на динамические.
-    public static int[][] singleThreadMultiply0(int[][] matrixA, int[][] matrixB) {
-        final int[][] matrixC = new int[matrixA.length][matrixA.length];
+    // Перемножение матрицы (A) на матрицу (B), через нарезку B на колонки и сборкой результирующей матрицы С из колонок.
+    public static int[][] singleThreadMultiplyBySliceMatrixB(int[][] matrixA, int[][] matrixB) {
+        final int matrixSize = matrixA.length;
 
-        for (int i = 0; i < matrixA.length; i++) {
-            for (int j = 0; j < matrixA.length; j++) {
-                int sum = 0;
-                for (int k = 0; k < matrixA.length; k++) {
-                    sum += matrixA[i][k] * matrixB[k][j];
-                }
-                matrixC[i][j] = sum;
-            }
+        final int[][] matrixBT = transparent(matrixB);
+        final int[][] matrixCT = new int[matrixSize][matrixSize];
+
+        for (int i = 0; i < matrixSize; i++) {
+            matrixCT[i] = singleThreadMultiplyMatrixOnColumn(matrixA, matrixBT[i]);
         }
-        return matrixC;
+
+        return transparent(matrixCT);
+    }
+
+    // Перемножение матрицы на столбец.
+    public static int[] singleThreadMultiplyMatrixOnColumn(int[][] matrixA, int[] matrixBT) {
+        final int matrixSize = matrixA.length;
+        final int[] matrixCN1 = new int[matrixSize];
+        for (int i = 0; i < matrixSize; i++) {
+            int sum = 0;
+            for (int k = 0; k < matrixSize; k++) {
+                sum += matrixA[i][k] * matrixBT[k];
+            }
+            matrixCN1[i] = sum;
+        }
+        return matrixCN1;
     }
 
     // TODO optimize by https://habrahabr.ru/post/114797/
+    // Шаг 1. Исходный простейший кубический алгоритм перемножения матриц.
     public static int[][] singleThreadMultiply(int[][] matrixA, int[][] matrixB) {
         final int matrixSize = matrixA.length;
         final int[][] matrixC = new int[matrixSize][matrixSize];
@@ -59,12 +94,7 @@ public class MatrixUtil {
         final int matrixSize = matrixA.length;
         final int[][] matrixC = new int[matrixSize][matrixSize];
 
-        final int matrixBT[][] = new int[matrixSize][matrixSize];
-        for (int i = 0; i < matrixSize; i++) {
-            for (int j = 0; j < matrixSize; j++) {
-                matrixBT[j][i] = matrixB[i][j];
-            }
-        }
+        final int[][] matrixBT = transparent(matrixB);
 
         for (int i = 0; i < matrixSize; i++) {
             for (int j = 0; j < matrixSize; j++) {
@@ -78,44 +108,6 @@ public class MatrixUtil {
         return matrixC;
     }
 
-    // Реализован Шаг 4 из статьи на методе singleThreadMultiply2.
-    // Воспользуемся еще одним преимуществом Java — исключениями.
-    // Заменяем проверку на выход за границы матрицы (для внешнего цикла) на блок try {} catch {}.
-    // Это сократит количество сравнений на 1000 в нашем случае.
-    // Действительно, зачем 1000 раз сравнивать то, что всегда будет возвращать false и на 1001 раз вернет true.
-    //
-    // С одной стороны — сокращаем количество сравнений,
-    // с другой — появляется дополнительные накладные расходы на обработку исключений.
-    public static int[][] singleThreadMultiply42(int[][] matrixA, int[][] matrixB) {
-        final int matrixSize = matrixA.length;
-        final int[][] matrixC = new int[matrixSize][matrixSize];
-
-        final int matrixBT[][] = new int[matrixSize][matrixSize];
-
-        try {
-            for (int i = 0; ; i++) {
-                for (int j = 0; j < matrixSize; j++) {
-                    matrixBT[j][i] = matrixB[i][j];
-                }
-            }
-        } catch (IndexOutOfBoundsException ignored) {
-        }
-
-        try {
-            for (int i = 0; ; i++) {
-                for (int j = 0; j < matrixSize; j++) {
-                    int sum = 0;
-                    for (int k = 0; k < matrixSize; k++) {
-                        sum += matrixA[i][k] * matrixBT[j][k];
-                    }
-                    matrixC[i][j] = sum;
-                }
-            }
-        } catch (IndexOutOfBoundsException ignored) {
-        }
-        return matrixC;
-    }
-
     // Реализован Шаг 3 из статьи.
     // Главный недостаток от шага 2 — много циклов. Сокращаем объем кода и делаем его изящнее,
     // объединив операции транспонирования и умножения в один вычислительный цикл.
@@ -125,13 +117,13 @@ public class MatrixUtil {
         final int matrixSize = matrixA.length;
         final int[][] matrixC = new int[matrixSize][matrixSize];
 
-        final int oneColumnB[] = new int[matrixSize];
         for (int j = 0; j < matrixSize; j++) {
+            final int[] oneColumnB = new int[matrixSize];
             for (int k = 0; k < matrixSize; k++) {
                 oneColumnB[k] = matrixB[k][j];
             }
             for (int i = 0; i < matrixSize; i++) {
-                int oneRowA[] = matrixA[i];
+                int[] oneRowA = matrixA[i];
                 int sum = 0;
                 for (int k = 0; k < matrixSize; k++) {
                     sum += oneRowA[k] * oneColumnB[k];
@@ -154,51 +146,19 @@ public class MatrixUtil {
         final int matrixSize = matrixA.length;
         final int[][] matrixC = new int[matrixSize][matrixSize];
 
-        final int oneColumnB[] = new int[matrixSize];
         try {
             for (int j = 0; ; j++) {
+                final int[] oneColumnB = new int[matrixSize];
                 for (int k = 0; k < matrixSize; k++) {
                     oneColumnB[k] = matrixB[k][j];
                 }
                 for (int i = 0; i < matrixSize; i++) {
-                    int oneRowA[] = matrixA[i];
+                    int[] oneRowA = matrixA[i];
                     int sum = 0;
                     for (int k = 0; k < matrixSize; k++) {
                         sum += oneRowA[k] * oneColumnB[k];
                     }
                     matrixC[i][j] = sum;
-                }
-            }
-        } catch (IndexOutOfBoundsException ignored) {
-        }
-        return matrixC;
-    }
-
-    // Шаг 5. Была попытка отказаться от проверки окончания в цикле второго уровня.
-    // Но дождаться окончания выполнения этого метода не вышло.
-    public static int[][] singleThreadMultiply543(int[][] matrixA, int[][] matrixB) {
-        final int matrixSize = matrixA.length;
-        final int[][] matrixC = new int[matrixSize][matrixSize];
-
-        final int oneColumnB[] = new int[matrixSize];
-        try {
-            for (int j = 0; ; j++) {
-                try {
-                    for (int k = 0; ; k++) {
-                        oneColumnB[k] = matrixB[k][j];
-                    }
-                } catch (IndexOutOfBoundsException ignored) {
-                }
-                try {
-                    for (int i = 0; ; i++) {
-                        int oneRowA[] = matrixA[i];
-                        int sum = 0;
-                        for (int k = 0; k < matrixSize; k++) {
-                            sum += oneRowA[k] * oneColumnB[k];
-                        }
-                        matrixC[i][j] = sum;
-                    }
-                }  catch (IndexOutOfBoundsException ignored) {
                 }
             }
         } catch (IndexOutOfBoundsException ignored) {
@@ -228,5 +188,56 @@ public class MatrixUtil {
             }
         }
         return true;
+    }
+
+    public static int[][] transparent(int[][] matrixA) {
+        final int matrixSize = matrixA.length;
+        final int[][] matrixAT = new int[matrixSize][matrixSize];
+        for (int i = 0; i < matrixSize; i++) {
+            for (int j = 0; j < matrixSize; j++) {
+                matrixAT[j][i] = matrixA[i][j];
+            }
+        }
+        return matrixAT;
+    }
+
+    public static synchronized void printMatrix(String name, int[][] matrixA)
+    {
+        final int matrixSize = matrixA.length;
+        System.out.println( name + "(" + matrixSize + ", " + matrixSize + ") =");
+        for (int[] row: matrixA) {
+            for (int cell: row) {
+                System.out.print(cell + " ");
+            }
+            System.out.println();
+        }
+    }
+
+    public static synchronized void printMatrixColumn(String name, int[] matrixA)
+    {
+        final int matrixSize = matrixA.length;
+        System.out.println( "  " + name + "(" + matrixSize + ", " + matrixSize + ") =");
+        for (int cell: matrixA) {
+            System.out.println("  " + cell);
+        }
+    }
+
+
+    static public class MatrixColumn {
+        private final int[] matrixCN1;
+        private final int columnN;
+
+        public MatrixColumn(int[] matrixCN1, int columnN) {
+            this.matrixCN1 = matrixCN1;
+            this.columnN = columnN;
+        }
+
+        public int[] getMatrixCN1() {
+            return matrixCN1;
+        }
+
+        public int getColumnN() {
+            return columnN;
+        }
     }
 }
