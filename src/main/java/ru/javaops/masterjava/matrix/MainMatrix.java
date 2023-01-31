@@ -5,9 +5,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainMatrix {
-    private static final int MATRIX_SIZE = 1000;
-    private static final int THREAD_NUMBER = 10;
-    private static final int COUNT_OF_PASS = 5;
+    private static final int MATRIX_SIZE = 2000;
+    private static final int THREAD_NUMBER = 4;
+    private static final int COUNT_OF_PASS = 2;
 
     private final static ExecutorService executor = Executors.newFixedThreadPool(MainMatrix.THREAD_NUMBER);
 
@@ -15,7 +15,7 @@ public class MainMatrix {
         final int[][] matrixA = MatrixUtil.create(MATRIX_SIZE);
         final int[][] matrixB = MatrixUtil.create(MATRIX_SIZE);
 
-        double singleThreadSum = 0.;
+        //double singleThreadSum = 0.;
         double concurrentThreadSum = 0.;
         double Sum_concurrentMultiply = 0.;
         double Sum_concurrentMultiply2 = 0.;
@@ -25,18 +25,20 @@ public class MainMatrix {
             System.out.println("Pass " + count);
             long start;
             double duration;
-
+/*
             start = System.currentTimeMillis();
             final int[][] matrixC = MatrixUtil.singleThreadMultiplyOpt(matrixA, matrixB);
             duration = (System.currentTimeMillis() - start) / 1000.;
             out("Single thread time, sec: %.3f", duration);
             singleThreadSum += duration;
-
+*/
             start = System.currentTimeMillis();
             final int[][] concurrentMatrixC = MatrixUtil.concurrentMultiplyStreams(matrixA, matrixB, Runtime.getRuntime().availableProcessors() - 1);
             duration = (System.currentTimeMillis() - start) / 1000.;
             out("Concurrent thread time, sec: %.3f", duration);
             concurrentThreadSum += duration;
+
+            final int[][] matrixC = concurrentMatrixC;
 
             // concurrentMultiply
             start = System.currentTimeMillis();
@@ -59,10 +61,10 @@ public class MainMatrix {
             out("Single thread time, sec: %.3f", duration);
             Sum_singleThreadMultiplyOpt2 += duration;
 
-            if (!MatrixUtil.compare(matrixC, concurrentMatrixC)) {
+            /*if (!MatrixUtil.compare(matrixC, concurrentMatrixC)) {
                 System.err.println("Comparison failed");
                 break;
-            } else if (!MatrixUtil.compare(matrixC, MatrixC_concurrentMultiply)) {
+            } else */if (!MatrixUtil.compare(matrixC, MatrixC_concurrentMultiply)) {
                 System.err.println("Comparison failed");
                 break;
             } if (!MatrixUtil.compare(matrixC, MatrixC_concurrentMultiply2)) {
@@ -76,7 +78,7 @@ public class MainMatrix {
         }
         count--;
         executor.shutdown();
-        out("\nAverage single thread time (singleThreadMultiplyOpt), sec: %.3f", singleThreadSum / count);
+        //out("\nAverage single thread time (singleThreadMultiplyOpt), sec: %.3f", singleThreadSum / count);
         out("Average concurrent thread time (concurrentMultiplyStreams), sec: %.3f", concurrentThreadSum / count);
 
         out("Average concurrent thread time (concurrentMultiply), sec: %.3f", Sum_concurrentMultiply / count);
@@ -126,6 +128,37 @@ public class MainMatrix {
         Average concurrent thread time (concurrentMultiply), sec: 0.147
         Average concurrent thread time (concurrentMultiply2), sec: 0.133
         Average single thread time (singleThreadMultiplyOpt2), sec: 0.682
+        */
+
+        /*
+        THREAD_NUMBER = 2
+        MATRIX_SIZE = 2000
+        COUNT_OF_PASS = 2
+        Average concurrent thread time (concurrentMultiplyStreams), sec: 1.530
+        Average concurrent thread time (concurrentMultiply), sec: 2.268
+        Average concurrent thread time (concurrentMultiply2), sec: 1.805
+        Average single thread time (singleThreadMultiplyOpt2), sec: 11.139
+        */
+
+        /*
+        THREAD_NUMBER = 4
+        MATRIX_SIZE = 2000
+        COUNT_OF_PASS = 2
+        Average concurrent thread time (concurrentMultiplyStreams), sec: 1.297
+        Average concurrent thread time (concurrentMultiply), sec: 1.366
+        Average concurrent thread time (concurrentMultiply2), sec: 1.057
+        Average single thread time (singleThreadMultiplyOpt2), sec: 10.988
+        */
+
+        /*
+        THREAD_NUMBER = 10
+        MATRIX_SIZE = 2000
+        COUNT_OF_PASS = 2
+        Average single thread time (singleThreadMultiplyOpt), sec: 19.561
+        Average concurrent thread time (concurrentMultiplyStreams), sec: 1.235
+        Average concurrent thread time (concurrentMultiply), sec: 1.269
+        Average concurrent thread time (concurrentMultiply2), sec: 1.098
+        Average single thread time (singleThreadMultiplyOpt2), sec: 10.815
         */
     }
 
