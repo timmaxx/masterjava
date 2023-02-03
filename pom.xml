@@ -16,7 +16,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <jaxb-api.version>2.3.0</jaxb-api.version><!-- JAXB 2.3.0 for jdk9+ -->
+        <jaxb-api.version>2.3.1</jaxb-api.version><!-- JAXB 2.3.1 for jdk9+ -->
     </properties>
 
     <build>
@@ -102,7 +102,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- JAXB 2.3.0 for jdk9+ -->
+        <!-- JAXB 2.3.1 for jdk9+ -->
         <!-- https://stackoverflow.com/questions/48204141/replacements-for-deprecated-jpms-modules-with-java-ee-apis
         -->
         <dependency>
@@ -115,12 +115,7 @@
             <artifactId>jaxb-runtime</artifactId>
             <version>${jaxb-api.version}</version>
         </dependency>
-        <!-- JAXB needs javax.activation module (jdk9) -->
-        <dependency>
-            <groupId>javax.activation</groupId>
-            <artifactId>javax.activation-api</artifactId>
-            <version>1.2.0</version>
-        </dependency>
+
     </dependencies>
 
     <profiles>
