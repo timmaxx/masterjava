@@ -20,4 +20,14 @@
         <City id="kiv">Киев</City>
         <City id="mnsk">Минск</City>
     </Cities>
+    <Projects>
+        <Project>
+            <name>topjava</name>
+            <description>topjava description</description>
+        </Project>
+        <Project>
+            <description>masterjava description</description>
+            <name>masterjava</name>
+        </Project>
+    </Projects>
 </Payload>
