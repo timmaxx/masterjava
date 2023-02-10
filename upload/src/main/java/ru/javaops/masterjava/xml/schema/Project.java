@@ -51,7 +51,7 @@ public class Project {
     @XmlElement(namespace = "http://javaops.ru", required = true)
     protected String description;
     @XmlElement(name = "Group", namespace = "http://javaops.ru", required = true)
-    protected List<Project.Group> group;
+    protected List<Group> group;
     @XmlAttribute(name = "name", required = true)
     protected String name;
 
@@ -97,13 +97,13 @@ public class Project {
      * 
      * <p>
      * Objects of the following type(s) are allowed in the list
-     * {@link Project.Group }
+     * {@link Group }
      * 
      * 
      */
-    public List<Project.Group> getGroup() {
+    public List<Group> getGroup() {
         if (group == null) {
-            group = new ArrayList<Project.Group>();
+            group = new ArrayList<Group>();
         }
         return this.group;
     }
