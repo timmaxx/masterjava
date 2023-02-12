@@ -31,7 +31,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.20.1</version>
+                <version>3.0.0-M5</version><!--<version>2.20.1</version>--> <!-- Cannot invoke "org.apache.maven.surefire.shade.org.apache.commons.lang3.JavaVersion.atLeast(org.apache.maven.surefire.shade.org.apache.commons.lang3.JavaVersion)" because "org.apache.maven.surefire.shade.org.apache.commons.lang3.SystemUtils.JAVA_SPECIFICATION_VERSION_AS_ENUM" is null -->
                 <configuration>
                     <argLine>-Dfile.encoding=UTF-8</argLine>
                 </configuration>
