@@ -156,7 +156,7 @@ public class MainXml {
         // DBIProvider.getDBI().useTransaction((conn, status) -> { dbUsers.forEach(dao::insert); });
         // DBIProvider.getDBI().useTransaction((conn, status) -> dbUsers.forEach(dao::insert));
 
-        // Inserting in batch mode:
-        DBIProvider.getDBI().useTransaction( ( conn, status) -> dao.insertAll(dbUsers.iterator()));
+        // Inserting in batch mode with batchChunkSize not constant:
+        DBIProvider.getDBI().useTransaction( ( conn, status) -> dao.insertAll(dbUsers.iterator(), 2));
     }
 }
