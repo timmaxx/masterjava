@@ -152,7 +152,11 @@ public class MainXml {
             );
             dbUsers.add(dbUser);
         }
+        // Inserting by rows:
         // DBIProvider.getDBI().useTransaction((conn, status) -> { dbUsers.forEach(dao::insert); });
-        DBIProvider.getDBI().useTransaction((conn, status) -> dbUsers.forEach(dao::insert));
+        // DBIProvider.getDBI().useTransaction((conn, status) -> dbUsers.forEach(dao::insert));
+
+        // Inserting in batch mode:
+        DBIProvider.getDBI().useTransaction( ( conn, status) -> dao.insertAll(dbUsers.iterator()));
     }
 }
