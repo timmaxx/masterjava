@@ -4,6 +4,9 @@ import com.google.common.base.Splitter;
 import com.google.common.io.Resources;
 import j2html.tags.ContainerTag;
 import one.util.streamex.StreamEx;
+import ru.javaops.masterjava.persist.DBIProvider;
+import ru.javaops.masterjava.persist.dao.UserDao;
+import ru.javaops.masterjava.persist.model.UserFlag;
 import ru.javaops.masterjava.xml.schema.ObjectFactory;
 import ru.javaops.masterjava.xml.schema.Payload;
 import ru.javaops.masterjava.xml.schema.Project;
@@ -52,6 +55,8 @@ public class MainXml {
         try (Writer writer = Files.newBufferedWriter(Paths.get("out/groups.html"))) {
             writer.write(html);
         }
+
+        saveUsersToDB(users);
     }
 
     private static Set<User> parseByJaxb(String projectName, URL payloadUrl) throws Exception {
@@ -132,5 +137,22 @@ public class MainXml {
             processor.setParameter("projectName", projectName);
             return processor.transform(xmlStream);
         }
+    }
+
+    private static void saveUsersToDB(Set<User> users) {
+        ru.javaops.masterjava.persist.DBITestProvider.initDBI();
+        UserDao dao = DBIProvider.getDao(UserDao.class);
+        dao.clean();
+        List<ru.javaops.masterjava.persist.model.User> dbUsers = new ArrayList<>();
+        for (User user: users) {
+            ru.javaops.masterjava.persist.model.User dbUser = new ru.javaops.masterjava.persist.model.User(
+                    user.getValue(),
+                    user.getEmail(),
+                    UserFlag.valueOf( user.getFlag().value())
+            );
+            dbUsers.add(dbUser);
+        }
+        // DBIProvider.getDBI().useTransaction((conn, status) -> { dbUsers.forEach(dao::insert); });
+        DBIProvider.getDBI().useTransaction((conn, status) -> dbUsers.forEach(dao::insert));
     }
 }
