@@ -37,6 +37,16 @@ public abstract class UserDao implements AbstractDao {
     @Override
     public abstract void clean();
 
-    @SqlBatch("INSERT INTO users (full_name, email, flag) VALUES (:fullName, :email, CAST(:flag AS user_flag))")
+
+    // CREATE UNIQUE INDEX users_unique_email_idx ON users (email);
+
+    // 1. По комбинации полей. Работает.
+    // @SqlBatch("INSERT INTO users (full_name, email, flag) VALUES (:fullName, :email, CAST(:flag AS user_flag)) ON CONFLICT (email) DO NOTHING")
+
+    // 2. По указанию имени ограничения. Не работает. Возможно, что кроме уникального индекса нужно сделать ещё и ограничение уникальности...
+    // @SqlBatch("INSERT INTO users (full_name, email, flag) VALUES (:fullName, :email, CAST(:flag AS user_flag)) ON CONFLICT ON CONSTRAINT users_unique_email_idx DO NOTHING")
+
+    // 3. При любых конфликтах. Работает.
+    @SqlBatch("INSERT INTO users (full_name, email, flag) VALUES (:fullName, :email, CAST(:flag AS user_flag)) ON CONFLICT DO NOTHING")
     public abstract void insertAll(@BindBean Iterator<User> users, @BatchChunkSize int batchChunkSize);
 }

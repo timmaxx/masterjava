@@ -142,7 +142,7 @@ public class MainXml {
     private static void saveUsersToDB(Set<User> users) {
         ru.javaops.masterjava.persist.DBITestProvider.initDBI();
         UserDao dao = DBIProvider.getDao(UserDao.class);
-        dao.clean();
+        //dao.clean();
         List<ru.javaops.masterjava.persist.model.User> dbUsers = new ArrayList<>();
         for (User user: users) {
             ru.javaops.masterjava.persist.model.User dbUser = new ru.javaops.masterjava.persist.model.User(
