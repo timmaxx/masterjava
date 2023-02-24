@@ -76,6 +76,13 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.20</version><!--<version>1.16.18</version>--><!-- Unable to make field private com.sun.tools.javac.processing.JavacProcessingEnvironment$DiscoveredProcessors com.sun.tools.javac.processing.JavacProcessingEnvironment.discoveredProcs accessible: module jdk.compiler does not "opens com.sun.tools.javac.processing" to unnamed module @37baddde -->
+            <scope>provided</scope>
+        </dependency>
+
         <!--Test-->
         <dependency>
             <groupId>junit</groupId>
